@@ -1,12 +1,14 @@
 # Security Audit
 
-Scan skills for prompt injection, data exfiltration, credential access, destructive commands, obfuscation, and suspicious URLs.
+Scan skills for prompt injection, data exfiltration, credential access, destructive commands, obfuscation, suspicious URLs, and broken local links.
 
 ## Usage
 
 ```bash
 skillshare audit                   # Scan all skills
 skillshare audit <name>            # Scan specific skill
+skillshare audit a b c             # Scan multiple skills
+skillshare audit --group frontend  # Scan all skills in a group
 skillshare audit <path>            # Scan file or directory path
 skillshare audit -p                # Scan project skills
 ```
@@ -15,6 +17,7 @@ skillshare audit -p                # Scan project skills
 
 | Flag | Description |
 |------|-------------|
+| `-G, --group <name>` | Scan all skills in a group (repeatable) |
 | `-p, --project` | Scan project-level skills |
 | `-g, --global` | Scan global skills |
 | `--threshold <t>` | Block threshold override: `critical\|high\|medium\|low\|info` |
@@ -94,6 +97,27 @@ Summary box:
 
 `Failed` counts skills with findings at/above the threshold. `Warning` counts skills with findings below the threshold.
 
+## Built-In Detection Patterns
+
+| Pattern | Severity | Detects | False-Positive Guards |
+|---------|----------|---------|----------------------|
+| `prompt-injection` | CRITICAL | Direct prompt override attempts | — |
+| `data-exfiltration` | CRITICAL | Piping sensitive data to network | — |
+| `credential-access` | CRITICAL | Reads from ~/.ssh, ~/.aws, etc. | — |
+| `destructive-commands` | HIGH | rm -rf, mkfs, disk wipe | — |
+| `dynamic-code-exec` | HIGH | Dynamic code evaluation calls | Excludes evaluate(), execFile() |
+| `shell-execution` | HIGH | Python shell invocation via stdlib | — |
+| `hidden-comment-injection` | HIGH | Prompt injection in HTML comments | — |
+| `obfuscation` | HIGH | Hidden unicode, long base64 strings | — |
+| `env-access` | MEDIUM | Environment variable references | Excludes NODE_ENV, npm_* |
+| `escape-obfuscation` | MEDIUM | 3+ consecutive hex/unicode escapes | — |
+| `suspicious-fetch` | MEDIUM | URLs used in command context | — |
+| `system-writes` | MEDIUM | Writes to /etc, /usr, system paths | — |
+| `insecure-http` | LOW | HTTP URLs (non-HTTPS) | — |
+| `external-link` | LOW | External URLs in markdown links | Excludes localhost/127.0.0.1/0.0.0.0 |
+| `dangling-link` | LOW | Broken local markdown links | Skips external/anchor links |
+| `shell-chain` | INFO | Long shell pipe chains | — |
+
 ## Custom Audit Rules
 
 Create custom rules to extend or override built-in patterns.
@@ -126,6 +150,10 @@ rules:
 
   # Disable a built-in rule
   - id: system-writes-0
+    enabled: false
+
+  # Disable the dangling-link structural check
+  - id: dangling-link
     enabled: false
 
   # Override severity of a built-in rule
